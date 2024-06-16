@@ -15,7 +15,7 @@ def main():
 
     while True:
         prompt = input("Prompt: ")
-        response = ollama.embeddings(prompt=prompt, model="mxbai-embed-large")
+        response = ollama.embeddings(prompt=prompt, model="nomic-embed-text")
         results = COLLECTION.query(
             query_embeddings=[response["embedding"]], n_results=3
         )
