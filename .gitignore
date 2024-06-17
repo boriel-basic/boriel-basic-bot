@@ -163,3 +163,4 @@ cython_debug/
 
 # Exclude ChromaDB data files
 chroma/
+.TOKEN*
