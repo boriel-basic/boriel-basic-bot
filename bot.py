@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import markdown
 import os
 import re
 import sys
@@ -8,6 +9,7 @@ from collections import defaultdict
 
 import telebot
 import chromadb
+from telebot.apihelper import ApiTelegramException
 
 import hug_lib
 
@@ -19,9 +21,12 @@ COLLECTION: chromadb.Collection
 
 ALLOWED_USERS = {
     "boriel",
-    "Duefectu",
     "castarco",
+    "Duefectu",
+    "Ljg701",
+    "SAYakimovich",
     "soyelrichar",
+    "zxspectrum1984",
 }
 
 RE_INST = re.compile(r"\[INST].*\[/INST]", re.DOTALL)
@@ -33,6 +38,14 @@ CONVERSATIONS = defaultdict(str)
 
 def is_user_allowed(message) -> bool:
     return message.from_user.username in ALLOWED_USERS
+
+
+def escape_markdown(text):
+    text = markdown.markdown(text=text, output_format="html")
+    text = text.replace("<p>", "")
+    text = text.replace("</p>", "\n")
+
+    return text
 
 
 @bot.message_handler(func=is_user_allowed)
@@ -49,6 +62,8 @@ def main_entry(message):
         username = message.from_user.username
         previous_prompt = CONVERSATIONS[username]
         while len(previous_prompt) > 4096:
+            if not RE_S.search(previous_prompt):
+                previous_prompt = ""
             previous_prompt = RE_S.sub("", previous_prompt, 1).strip()
 
         prompt = (
@@ -64,7 +79,15 @@ def main_entry(message):
         response = RE_INST.sub("", output[0]["generated_text"]).strip()
         response = RE_CLEAN.sub("", response)
 
-        bot.send_message(message.chat.id, response)
+        try:
+            bot.send_message(message.chat.id, response, parse_mode="MarkdownV2")
+        except ApiTelegramException:
+            html = escape_markdown(response)
+            try:
+                bot.send_message(message.chat.id, html, parse_mode="HTML")
+            except ApiTelegramException:
+                bot.send_message(message.chat.id, response)
+
     except Exception as e:
         bot.send_message(message.chat.id, "Sorry, there was an error. Try again.")
         print(f"Error: {e}", file=sys.stderr)
