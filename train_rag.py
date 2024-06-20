@@ -4,13 +4,15 @@ import glob
 import chromadb
 import ollama
 
-ZXBASIC_DOC_PATH = "/home/boriel/src/boriel-basic/zxbasic/docs"
+import hug_lib
+
+ZXBASIC_DOC_PATH = "/home/boriel/src/boriel-basic/docs/doc"
 
 
 def train(files: list[str]) -> None:
     client = chromadb.PersistentClient()
     collection = client.create_collection(
-        name="docs", metadata={"hnsw:space": "cosine"}
+        name="docs", metadata={"hnsw:space": "cosine"}, get_or_create=True
     )
 
     for i, filename in enumerate(files):
@@ -19,8 +21,9 @@ def train(files: list[str]) -> None:
         try:
             with open(filename, "rt", encoding="utf-8") as f:
                 doc = f.read()
-                response = ollama.embeddings(model="nomic-embed-text", prompt=doc)
-                embedding = response["embedding"]
+                #response = ollama.embeddings(model="nomic-embed-text", prompt=doc)
+                #embedding = response["embedding"]
+                embedding = hug_lib.get_embedding(doc)
                 collection.add(ids=[str(i)], embeddings=[embedding], documents=[doc])
         except Exception as e:
             print(f"Ignoring document {filename}\nException: {e}")
