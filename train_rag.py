@@ -1,8 +1,7 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import glob
 import chromadb
-import ollama
 
 import hug_lib
 
@@ -21,8 +20,8 @@ def train(files: list[str]) -> None:
         try:
             with open(filename, "rt", encoding="utf-8") as f:
                 doc = f.read()
-                #response = ollama.embeddings(model="nomic-embed-text", prompt=doc)
-                #embedding = response["embedding"]
+                # response = ollama.embeddings(model="nomic-embed-text", prompt=doc)
+                # embedding = response["embedding"]
                 embedding = hug_lib.get_embedding(doc)
                 collection.add(ids=[str(i)], embeddings=[embedding], documents=[doc])
         except Exception as e:
