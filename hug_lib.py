@@ -2,7 +2,6 @@ import os
 
 import requests
 
-
 TOKEN = os.environ["TOKEN"]
 
 

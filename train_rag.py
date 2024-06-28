@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import glob
+
 import chromadb
 
 import hug_lib

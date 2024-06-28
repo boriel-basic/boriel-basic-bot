@@ -1,39 +1,46 @@
 #!/usr/bin/env python3
 
-import markdown
+import json
 import os
 import re
 import sys
-
 from collections import defaultdict
 
-import telebot
 import chromadb
+import markdown
+import telebot
 from telebot.apihelper import ApiTelegramException
 
 import hug_lib
 
+ALLOWED_USERS_FILE = ".users.json"
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 bot = telebot.TeleBot(BOT_TOKEN)
 
 CHROMA_DB_CLIENT: chromadb.ClientAPI
 COLLECTION: chromadb.Collection
 
-ALLOWED_USERS = {
-    "boriel",
-    "castarco",
-    "Duefectu",
-    "Ljg701",
-    "SAYakimovich",
-    "soyelrichar",
-    "zxspectrum1984",
-}
+ALLOWED_USERS: set[str] = set()
 
 RE_INST = re.compile(r"\[INST].*\[/INST]", re.DOTALL)
 RE_CLEAN = re.compile(r"^[ \t\n]*(<\|assistant\|>|ANSWER)?:?[ \t\n]*")
 RE_S = re.compile(r"\[INST].*?\[/ASS]", re.DOTALL)
 
 CONVERSATIONS = defaultdict(str)
+
+
+def load_allowed_users(fname: str) -> set[str]:
+    if not os.path.isfile(fname):
+        return set()
+
+    with open(fname, "rt", encoding="utf-8") as f:
+        return set(json.load(f))
+
+
+def save_allowed_users(fname: str) -> None:
+    with open(fname, "wt", encoding="utf-8") as f:
+        json.dump(list(ALLOWED_USERS), f)
+
 
 
 def is_user_allowed(message) -> bool:
@@ -46,6 +53,28 @@ def escape_markdown(text):
     text = text.replace("</p>", "\n")
 
     return text
+
+
+def is_registered(user_id: str) -> bool:
+    global ALLOWED_USERS
+    return str(user_id) in ALLOWED_USERS
+
+
+@bot.message_handler(commands=['adduser'], func=is_user_allowed)
+def add_user(message):
+    # Check if a user ID was provided in the message
+    if len(message.text.split()) < 2:
+        bot.reply_to(message, "Please provide a user ID to add. Usage: /adduser <user_id>")
+        return
+
+    new_user_id = message.text.split()[1]
+
+    if new_user_id not in ALLOWED_USERS:
+        ALLOWED_USERS.add(new_user_id)
+        save_allowed_users(ALLOWED_USERS_FILE)
+        bot.reply_to(message, f"User {new_user_id} has been added successfully.")
+    else:
+        bot.reply_to(message, f"User {new_user_id} is already in the list.")
 
 
 @bot.message_handler(func=is_user_allowed)
@@ -94,11 +123,18 @@ def main_entry(message):
 
 
 def main():
+    global ALLOWED_USERS
     global COLLECTION
     global CHROMA_DB_CLIENT
+
     # load chromadb collection
     CHROMA_DB_CLIENT = chromadb.PersistentClient()
     COLLECTION = CHROMA_DB_CLIENT.get_collection("docs")
+
+    ALLOWED_USERS = load_allowed_users(ALLOWED_USERS_FILE)
+    if not ALLOWED_USERS:
+        ALLOWED_USERS = {"boriel"}
+        save_allowed_users(ALLOWED_USERS_FILE)
 
 
 if __name__ == "__main__":
