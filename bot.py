@@ -86,6 +86,42 @@ def list_users(message):
     bot.reply_to(message, f"```json\n{json.dumps(ALLOWED_USERS, indent=2)}\n```", parse_mode="MarkdownV2")
 
 
+@bot.message_handler(commands=["promote"], func=is_admin)
+def promote_user(message):
+    # Promotes a user to admin
+
+    if len(message.text.split()) < 2:
+        bot.reply_to(message, "Please provide a user ID to add. Usage: /adduser <user_id>")
+        return
+
+    new_user_id = message.text.split()[1]
+
+    if new_user_id in ALLOWED_USERS:
+        ALLOWED_USERS[new_user_id] = {"is_admin": True}
+        save_allowed_users(ALLOWED_USERS_FILE)
+        bot.reply_to(message, f"User {new_user_id} has been promoted successfully.")
+    else:
+        bot.reply_to(message, f"User {new_user_id} is not in the list.")
+
+
+@bot.message_handler(commands=["demote"], func=is_admin)
+def demote_user(message):
+    # Demotes a user to normal user
+
+    if len(message.text.split()) < 2:
+        bot.reply_to(message, "Please provide a user ID to add. Usage: /adduser <user_id>")
+        return
+
+    new_user_id = message.text.split()[1]
+
+    if new_user_id in ALLOWED_USERS:
+        ALLOWED_USERS[new_user_id] = {"is_admin": False}
+        save_allowed_users(ALLOWED_USERS_FILE)
+        bot.reply_to(message, f"User {new_user_id} has been demoted successfully.")
+    else:
+        bot.reply_to(message, f"User {new_user_id} is not in the list.")
+
+
 @bot.message_handler(func=is_user_allowed)
 def main_entry(message):
     try:
