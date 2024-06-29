@@ -5,13 +5,21 @@ import os
 import re
 import sys
 from collections import defaultdict
+from typing import Final
 
 import chromadb
 import markdown
+
 import telebot
 from telebot.apihelper import ApiTelegramException
+from telebot.types import Message
 
 import hug_lib
+from common import SYS_PROMPT
+from conversation import Conversation
+
+# LLM_MODEL: Final[str] = "HuggingFaceH4/zephyr-7b-beta"
+LLM_MODEL: Final[str] = "mistralai/Mistral-7B-Instruct-v0.3"
 
 ALLOWED_USERS_FILE = ".users.json"
 ADMIN_USERS_FILE = ".admin_users.json"
@@ -21,13 +29,14 @@ bot = telebot.TeleBot(BOT_TOKEN)
 CHROMA_DB_CLIENT: chromadb.ClientAPI
 COLLECTION: chromadb.Collection
 
-ALLOWED_USERS: set[str] = set()
+ALLOWED_USERS: dict[str, dict[str, bool]]
 
 RE_INST = re.compile(r"\[INST].*\[/INST]", re.DOTALL)
 RE_CLEAN = re.compile(r"^[ \t\n]*(<\|assistant\|>|ANSWER)?:?[ \t\n]*")
 RE_S = re.compile(r"\[INST].*?\[/ASS]", re.DOTALL)
 
-CONVERSATIONS = defaultdict(str)
+CONVERSATIONS = defaultdict(Conversation)
+MAX_INPUT_LENGTH = 8192
 
 
 def load_allowed_users(fname: str) -> dict[str, dict[str, bool]]:
@@ -43,15 +52,15 @@ def save_allowed_users(fname: str) -> None:
         json.dump(ALLOWED_USERS, f)
 
 
-def is_user_allowed(message) -> bool:
+def is_user_allowed(message: Message) -> bool:
     return message.from_user.username in ALLOWED_USERS
 
 
-def is_admin(message) -> bool:
+def is_admin(message: Message) -> bool:
     return is_user_allowed(message) and ALLOWED_USERS[message.from_user.username].get("is_admin")
 
 
-def escape_markdown(text):
+def escape_markdown(text: str) -> str:
     text = markdown.markdown(text=text, output_format="html")
     text = text.replace("<p>", "")
     text = text.replace("</p>", "\n")
@@ -65,7 +74,7 @@ def is_registered(user_id: str) -> bool:
 
 
 @bot.message_handler(commands=["adduser"], func=is_admin)
-def add_user(message):
+def add_user(message: Message):
     # Check if a user ID was provided in the message
     if len(message.text.split()) < 2:
         bot.reply_to(message, "Please provide a user ID to add. Usage: /adduser <user_id>")
@@ -82,12 +91,12 @@ def add_user(message):
 
 
 @bot.message_handler(commands=["list"], func=is_admin)
-def list_users(message):
+def list_users(message: Message) -> None:
     bot.reply_to(message, f"```json\n{json.dumps(ALLOWED_USERS, indent=2)}\n```", parse_mode="MarkdownV2")
 
 
 @bot.message_handler(commands=["promote"], func=is_admin)
-def promote_user(message):
+def promote_user(message: Message) -> None:
     # Promotes a user to admin
 
     if len(message.text.split()) < 2:
@@ -105,7 +114,7 @@ def promote_user(message):
 
 
 @bot.message_handler(commands=["demote"], func=is_admin)
-def demote_user(message):
+def demote_user(message: Message) -> None:
     # Demotes a user to normal user
 
     if len(message.text.split()) < 2:
@@ -123,7 +132,7 @@ def demote_user(message):
 
 
 @bot.message_handler(func=is_user_allowed)
-def main_entry(message):
+def main_entry(message: Message) -> None:
     try:
         embedding = hug_lib.get_embedding(message.text)
         results = COLLECTION.query(query_embeddings=[embedding], n_results=3)
@@ -131,33 +140,26 @@ def main_entry(message):
         # print(results)
 
         username = message.from_user.username
-        previous_prompt = CONVERSATIONS[username]
-        while len(previous_prompt) > 4096:
-            if not RE_S.search(previous_prompt):
-                previous_prompt = ""
-            previous_prompt = RE_S.sub("", previous_prompt, 1).strip()
+        conversation = CONVERSATIONS[username]
+        conversation.truncate(max_length=MAX_INPUT_LENGTH, sys_prompt=SYS_PROMPT)
 
-        prompt = (
-            f"{previous_prompt} [INST] Be brief an concise. The main topic is Boriel BASIC (a BASIC dialect derived from "
-            f"Sinclair BASIC).\n{data}\n\n---\nQUESTION: {message.text}\n[/INST] [ASS]"
-        )
+        prompt = conversation.make_prompt(message.text, sys_prompt=SYS_PROMPT)
         # print(prompt)
 
-        output = hug_lib.query(model="HuggingFaceH4/zephyr-7b-beta", prompt=prompt)
+        output = hug_lib.query(model=LLM_MODEL, prompt=prompt)
         # print(output)
 
-        CONVERSATIONS[username] = prompt + output[0]["generated_text"] + " [/ASS] "
-        response = RE_INST.sub("", output[0]["generated_text"]).strip()
-        response = RE_CLEAN.sub("", response)
+        system_answer = output[0]["generated_text"]
+        conversation.add_entry(user_prompt=message.text, system_answer=system_answer)
 
         try:
-            bot.send_message(message.chat.id, response, parse_mode="MarkdownV2")
+            bot.send_message(message.chat.id, system_answer, parse_mode="MarkdownV2")
         except ApiTelegramException:
-            html = escape_markdown(response)
+            html = escape_markdown(system_answer)
             try:
                 bot.send_message(message.chat.id, html, parse_mode="HTML")
             except ApiTelegramException:
-                bot.send_message(message.chat.id, response)
+                bot.send_message(message.chat.id, system_answer)
 
     except Exception as e:
         bot.send_message(message.chat.id, "Sorry, there was an error. Try again.")
