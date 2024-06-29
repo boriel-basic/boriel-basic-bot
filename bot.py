@@ -14,7 +14,7 @@ from telebot.apihelper import ApiTelegramException
 from telebot.types import Message
 
 import hug_lib
-from common import SYS_PROMPT
+from common import SYS_PROMPT, INSTRUCT_PROMPT_TEMPLATE
 from conversation import Conversation
 
 # LLM_MODEL: Final[str] = "HuggingFaceH4/zephyr-7b-beta"
@@ -131,14 +131,14 @@ def main_entry(message: Message) -> None:
     try:
         embedding = hug_lib.get_embedding(message.text)
         results = COLLECTION.query(query_embeddings=[embedding], n_results=3)
-        data = "\n".join(f"SEARCH RESULT {i}:\n{x[0]}" for i, x in enumerate(results["documents"], start=1))
         # print(results)
+        data = "\n".join(f"\n\n{x[0]}" for i, x in enumerate(results["documents"], start=1))
 
+        user_prompt = INSTRUCT_PROMPT_TEMPLATE.format(data=data, user_prompt=message.text)
         username = message.from_user.username
         conversation = CONVERSATIONS[username]
-        conversation.truncate(max_length=MAX_INPUT_LENGTH, sys_prompt=SYS_PROMPT)
 
-        prompt = conversation.make_prompt(message.text, sys_prompt=SYS_PROMPT)
+        prompt = conversation.truncate(max_length=MAX_INPUT_LENGTH, user_prompt=user_prompt, sys_prompt=SYS_PROMPT)
         # print(prompt)
 
         output = hug_lib.query(model=LLM_MODEL, prompt=prompt)

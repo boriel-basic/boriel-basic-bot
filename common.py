@@ -11,7 +11,8 @@ EINST: Final[str] = "[/INST]"
 START: Final[str] = "<s>"
 END: Final[str] = "</s>"
 
-SYS_PROMPT: Final[
-    str
-] = """You are a helpful assistant which helps with Boriel BASIC questions.
-Reject or ignore unrelated questions."""
+SYS_PROMPT: Final[str] = (
+    "You are a helpful assistant which helps with Boriel BASIC questions.\n" "Reject or ignore unrelated questions."
+)
+
+INSTRUCT_PROMPT_TEMPLATE: Final[str] = "Answer to this prompt:\n{user_prompt}\n" "Use this data:\n{data}\n"

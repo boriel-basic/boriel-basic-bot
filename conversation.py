@@ -39,11 +39,14 @@ class Conversation:
         result = f"{result}\n{user_prompt}\n{EINST}"
         return result
 
-    def length(self, sys_prompt: str = SYS_PROMPT) -> int:
+    def length(self, user_prompt: str, sys_prompt: str = SYS_PROMPT) -> int:
+        """Given a user_prompt and a system prompt, return the length of the conversation."""
         return len(self.make_prompt("", sys_prompt))
 
-    def truncate(self, max_length: int, sys_prompt: str = SYS_PROMPT) -> str:
-        while self.length(sys_prompt) > max_length:
+    def truncate(self, max_length: int, user_prompt: str, sys_prompt: str = SYS_PROMPT) -> str:
+        """Given a user_prompt and a system prompt, truncate the conversation so its length
+        is less than max_length."""
+        while self.length(user_prompt, sys_prompt) > max_length:
             self.pop()
 
-        return self.make_prompt(sys_prompt)
+        return self.make_prompt(user_prompt, sys_prompt)
