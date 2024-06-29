@@ -14,7 +14,7 @@ from telebot.apihelper import ApiTelegramException
 from telebot.types import Message
 
 import hug_lib
-from common import SYS_PROMPT, INSTRUCT_PROMPT_TEMPLATE
+from common import SYS_PROMPT, INSTRUCT_PROMPT_TEMPLATE, load_json, save_json
 from conversation import Conversation
 
 # LLM_MODEL: Final[str] = "HuggingFaceH4/zephyr-7b-beta"
@@ -32,19 +32,6 @@ ALLOWED_USERS: dict[str, dict[str, bool]]
 
 CONVERSATIONS = defaultdict(Conversation)
 MAX_INPUT_LENGTH = 8192
-
-
-def load_allowed_users(fname: str) -> dict[str, dict[str, bool]]:
-    if not os.path.isfile(fname):
-        return dict()
-
-    with open(fname, "rt", encoding="utf-8") as f:
-        return json.load(f)
-
-
-def save_allowed_users(fname: str) -> None:
-    with open(fname, "wt", encoding="utf-8") as f:
-        json.dump(ALLOWED_USERS, f)
 
 
 def is_user_allowed(message: Message) -> bool:
@@ -79,7 +66,7 @@ def add_user(message: Message):
 
     if new_user_id not in ALLOWED_USERS:
         ALLOWED_USERS[new_user_id] = {"is_admin": False}
-        save_allowed_users(ALLOWED_USERS_FILE)
+        save_json(ALLOWED_USERS_FILE, ALLOWED_USERS)
         bot.reply_to(message, f"User {new_user_id} has been added successfully.")
     else:
         bot.reply_to(message, f"User {new_user_id} is already in the list.")
@@ -102,7 +89,7 @@ def promote_user(message: Message) -> None:
 
     if new_user_id in ALLOWED_USERS:
         ALLOWED_USERS[new_user_id] = {"is_admin": True}
-        save_allowed_users(ALLOWED_USERS_FILE)
+        save_json(ALLOWED_USERS_FILE, ALLOWED_USERS)
         bot.reply_to(message, f"User {new_user_id} has been promoted successfully.")
     else:
         bot.reply_to(message, f"User {new_user_id} is not in the list.")
@@ -120,7 +107,7 @@ def demote_user(message: Message) -> None:
 
     if new_user_id in ALLOWED_USERS:
         ALLOWED_USERS[new_user_id] = {"is_admin": False}
-        save_allowed_users(ALLOWED_USERS_FILE)
+        save_json(ALLOWED_USERS_FILE, ALLOWED_USERS)
         bot.reply_to(message, f"User {new_user_id} has been demoted successfully.")
     else:
         bot.reply_to(message, f"User {new_user_id} is not in the list.")
@@ -170,14 +157,14 @@ def main():
     CHROMA_DB_CLIENT = chromadb.PersistentClient()
     COLLECTION = CHROMA_DB_CLIENT.get_collection("docs")
 
-    ALLOWED_USERS = load_allowed_users(ALLOWED_USERS_FILE)
+    ALLOWED_USERS = load_json(ALLOWED_USERS_FILE)
     if not ALLOWED_USERS:
         ALLOWED_USERS = {
             "boriel": {
                 "is_admin": True,
             },
         }
-        save_allowed_users(ALLOWED_USERS_FILE)
+        save_json(ALLOWED_USERS_FILE, ALLOWED_USERS)
 
 
 if __name__ == "__main__":

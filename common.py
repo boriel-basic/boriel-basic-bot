@@ -1,3 +1,5 @@
+import json
+import os
 from typing import Final
 
 # JSON type
@@ -16,3 +18,16 @@ SYS_PROMPT: Final[str] = (
 )
 
 INSTRUCT_PROMPT_TEMPLATE: Final[str] = "Answer to this prompt:\n{user_prompt}\n" "Use this data:\n{data}\n"
+
+
+def load_json(fname: str) -> JSON:
+    if not os.path.isfile(fname):
+        return dict()
+
+    with open(fname, "rt", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def save_json(fname: str, obj: JSON) -> None:
+    with open(fname, "wt", encoding="utf-8") as f:
+        json.dump(obj, f)
