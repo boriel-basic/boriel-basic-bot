@@ -2,7 +2,6 @@
 
 import json
 import os
-import re
 import sys
 from collections import defaultdict
 from typing import Final
@@ -30,10 +29,6 @@ CHROMA_DB_CLIENT: chromadb.ClientAPI
 COLLECTION: chromadb.Collection
 
 ALLOWED_USERS: dict[str, dict[str, bool]]
-
-RE_INST = re.compile(r"\[INST].*\[/INST]", re.DOTALL)
-RE_CLEAN = re.compile(r"^[ \t\n]*(<\|assistant\|>|ANSWER)?:?[ \t\n]*")
-RE_S = re.compile(r"\[INST].*?\[/ASS]", re.DOTALL)
 
 CONVERSATIONS = defaultdict(Conversation)
 MAX_INPUT_LENGTH = 8192
