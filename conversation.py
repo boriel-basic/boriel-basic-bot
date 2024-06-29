@@ -1,12 +1,16 @@
 from dataclasses import dataclass, asdict
+from typing import Self
 
-from common import SYS_PROMPT, START, INST, SYS, ESYS, EINST, END
+from common import SYS_PROMPT, START, INST, SYS, ESYS, EINST, END, JSON
 
 
 @dataclass(frozen=True)
 class ConversationEntry:
     user_prompt: str
     system_answer: str
+
+    def as_dict(self):
+        return asdict(self)
 
 
 @dataclass
@@ -50,3 +54,11 @@ class Conversation:
             self.pop()
 
         return self.make_prompt(user_prompt, sys_prompt)
+
+    @classmethod
+    def from_dict(cls, data: JSON) -> Self:
+        result = cls()
+        for entry in data["dialog"]:
+            result.add_entry(**entry)
+
+        return result

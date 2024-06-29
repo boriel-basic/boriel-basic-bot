@@ -30,6 +30,7 @@ COLLECTION: chromadb.Collection
 
 ALLOWED_USERS: dict[str, dict[str, bool]]
 
+CONVERSATION_PATH: Final[str] = "./memory"
 CONVERSATIONS = defaultdict(Conversation)
 MAX_INPUT_LENGTH = 8192
 
@@ -113,6 +114,22 @@ def demote_user(message: Message) -> None:
         bot.reply_to(message, f"User {new_user_id} is not in the list.")
 
 
+def load_conversation(username: str) -> Conversation:
+    global CONVERSATIONS
+
+    if username not in CONVERSATIONS:
+        conversation_json = load_json(f"{CONVERSATION_PATH}/{username}.json")
+
+        if conversation_json:
+            CONVERSATIONS[username] = Conversation.from_dict(conversation_json)
+
+    return CONVERSATIONS[username]
+
+
+def save_conversation(username: str, conversation: Conversation) -> None:
+    save_json(f"{CONVERSATION_PATH}/{username}.json", conversation.as_dict())
+
+
 @bot.message_handler(func=is_user_allowed)
 def main_entry(message: Message) -> None:
     try:
@@ -123,7 +140,7 @@ def main_entry(message: Message) -> None:
 
         user_prompt = INSTRUCT_PROMPT_TEMPLATE.format(data=data, user_prompt=message.text)
         username = message.from_user.username
-        conversation = CONVERSATIONS[username]
+        conversation = load_conversation(username)
 
         prompt = conversation.truncate(max_length=MAX_INPUT_LENGTH, user_prompt=user_prompt, sys_prompt=SYS_PROMPT)
         # print(prompt)
@@ -133,6 +150,7 @@ def main_entry(message: Message) -> None:
 
         system_answer = output[0]["generated_text"]
         conversation.add_entry(user_prompt=message.text, system_answer=system_answer)
+        save_conversation(username, conversation)
 
         try:
             bot.send_message(message.chat.id, system_answer, parse_mode="MarkdownV2")
