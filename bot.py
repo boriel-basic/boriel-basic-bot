@@ -151,13 +151,11 @@ def start(message: Message) -> None:
     message_id = message.chat.id
     if not is_user_allowed(message):
         bot.send_message(
-            message_id, "I'm in demo / testing mode. You are not enrolled in the BETA.\n" "Ask @boriel to add you"
+            message_id, "I'm in demo / testing mode. You are not enrolled in the BETA.\nAsk @boriel to add you"
         )
         return
 
-    bot.send_message(
-        message_id, "You can ask me about Boriel BASIC doc, and code snippets.\n" "I'll try to do my best."
-    )
+    bot.send_message(message_id, "You can ask me about Boriel BASIC doc, and code snippets.\nI'll try to do my best.")
 
 
 def load_conversation(username: str) -> Conversation:
