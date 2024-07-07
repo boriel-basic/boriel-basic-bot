@@ -3,7 +3,9 @@
 import json
 import os
 import sys
+
 from collections import defaultdict
+from enum import StrEnum
 from typing import Final
 
 import chromadb
@@ -35,6 +37,15 @@ CONVERSATIONS = defaultdict(Conversation)
 MAX_INPUT_LENGTH = 8192
 
 
+class Command(StrEnum):
+    ADD_USER = "adduser"
+    DEL_USER = "deluser"
+    DEMOTE = "demote"
+    HELP = "help"
+    LIST = "listusers"
+    PROMOTE = "promote"
+
+
 def is_user_allowed(message: Message) -> bool:
     return message.from_user.username in ALLOWED_USERS
 
@@ -56,15 +67,14 @@ def is_registered(user_id: str) -> bool:
     return str(user_id) in ALLOWED_USERS
 
 
-@bot.message_handler(commands=["adduser"], func=is_admin)
+@bot.message_handler(commands=[Command.ADD_USER], func=is_admin)
 def add_user(message: Message):
     # Check if a user ID was provided in the message
     if len(message.text.split()) < 2:
-        bot.reply_to(message, "Please provide a user ID to add. Usage: /adduser <user_id>")
+        bot.reply_to(message, f"Please provide a user ID to add. Usage: /{Command.ADD_USER} <user_id>")
         return
 
-    new_user_id = message.text.split()[1]
-
+    new_user_id = message.text.split()[1].lstrip("@")
     if new_user_id not in ALLOWED_USERS:
         ALLOWED_USERS[new_user_id] = {"is_admin": False}
         save_json(ALLOWED_USERS_FILE, ALLOWED_USERS)
@@ -73,12 +83,27 @@ def add_user(message: Message):
         bot.reply_to(message, f"User {new_user_id} is already in the list.")
 
 
-@bot.message_handler(commands=["list"], func=is_admin)
+@bot.message_handler(commands=[Command.DEL_USER], func=is_admin)
+def del_user(message: Message):
+    if len(message.text.split()) < 2:
+        bot.reply_to(message, f"Please provide a user ID to delete. Usage: /{Command.DEL_USER} <user_id>")
+        return
+
+    user_id = message.text.split()[1].lstrip("@")
+    if user_id not in ALLOWED_USERS:
+        bot.reply_to(message, f"User {user_id} is not in the list.")
+    else:
+        del ALLOWED_USERS[user_id]
+        save_json(ALLOWED_USERS_FILE, ALLOWED_USERS)
+        bot.reply_to(message, f"User {user_id} has been deleted successfully.")
+
+
+@bot.message_handler(commands=[Command.LIST], func=is_admin)
 def list_users(message: Message) -> None:
     bot.reply_to(message, f"```json\n{json.dumps(ALLOWED_USERS, indent=2)}\n```", parse_mode="MarkdownV2")
 
 
-@bot.message_handler(commands=["promote"], func=is_admin)
+@bot.message_handler(commands=[Command.PROMOTE], func=is_admin)
 def promote_user(message: Message) -> None:
     # Promotes a user to admin
 
@@ -96,12 +121,12 @@ def promote_user(message: Message) -> None:
         bot.reply_to(message, f"User {new_user_id} is not in the list.")
 
 
-@bot.message_handler(commands=["demote"], func=is_admin)
+@bot.message_handler(commands=[Command.DEMOTE], func=is_admin)
 def demote_user(message: Message) -> None:
     # Demotes a user to normal user
 
     if len(message.text.split()) < 2:
-        bot.reply_to(message, "Please provide a user ID to add. Usage: /adduser <user_id>")
+        bot.reply_to(message, f"Please provide a user ID to add. Usage: /{Command.DEMOTE} <user_id>")
         return
 
     new_user_id = message.text.split()[1]
@@ -112,6 +137,11 @@ def demote_user(message: Message) -> None:
         bot.reply_to(message, f"User {new_user_id} has been demoted successfully.")
     else:
         bot.reply_to(message, f"User {new_user_id} is not in the list.")
+
+
+@bot.message_handler(commands=[Command.HELP], func=is_admin)
+def command_help(message: Message) -> None:
+    bot.reply_to(message, f"Available commands:\n * {'\n * '.join(Command)}")
 
 
 def load_conversation(username: str) -> Conversation:
