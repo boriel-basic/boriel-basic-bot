@@ -44,6 +44,7 @@ class Command(StrEnum):
     HELP = "help"
     LIST = "listusers"
     PROMOTE = "promote"
+    START = "start"
 
 
 def is_user_allowed(message: Message) -> bool:
@@ -142,6 +143,21 @@ def demote_user(message: Message) -> None:
 @bot.message_handler(commands=[Command.HELP], func=is_admin)
 def command_help(message: Message) -> None:
     bot.reply_to(message, f"Available commands:\n * {'\n * '.join(Command)}")
+
+
+@bot.message_handler(commands=[Command.START])
+def start(message: Message) -> None:
+    bot.reply_to(message, "Welcome to Boriel BASIC bot helper")
+    message_id = message.chat.id
+    if not is_user_allowed(message):
+        bot.send_message(
+            message_id, "I'm in demo / testing mode. You are not enrolled in the BETA.\n" "Ask @boriel to add you"
+        )
+        return
+
+    bot.send_message(
+        message_id, "You can ask me about Boriel BASIC doc, and code snippets.\n" "I'll try to do my best."
+    )
 
 
 def load_conversation(username: str) -> Conversation:
