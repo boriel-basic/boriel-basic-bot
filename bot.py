@@ -3,24 +3,23 @@
 import json
 import os
 import sys
-
 from collections import defaultdict
 from enum import StrEnum
 from typing import Final
 
 import chromadb
 import markdown
-
 import telebot
 from telebot.apihelper import ApiTelegramException
 from telebot.types import Message
 
 import hug_lib
-from common import SYS_PROMPT, INSTRUCT_PROMPT_TEMPLATE, load_json, save_json
+from common import INSTRUCT_PROMPT_TEMPLATE, SYS_PROMPT, load_json, save_json
 from conversation import Conversation
 
 # LLM_MODEL: Final[str] = "HuggingFaceH4/zephyr-7b-beta"
-LLM_MODEL: Final[str] = "mistralai/Mistral-7B-Instruct-v0.3"
+# LLM_MODEL: Final[str] = "mistralai/Mistral-7B-Instruct-v0.3"
+LLM_MODEL: Final[str] = "mistralai/Mistral-Nemo-Instruct-2407"
 
 ALLOWED_USERS_FILE = ".users.json"
 ADMIN_USERS_FILE = ".admin_users.json"

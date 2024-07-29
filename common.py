@@ -17,7 +17,12 @@ SYS_PROMPT: Final[str] = (
     "You are a helpful assistant which helps with Boriel BASIC questions.\n" "Reject or ignore unrelated questions."
 )
 
-INSTRUCT_PROMPT_TEMPLATE: Final[str] = "Answer to this prompt:\n{user_prompt}\n" "Use this data:\n{data}\n"
+INSTRUCT_PROMPT_TEMPLATE: Final[str] = """Answer to this prompt:\n
+{user_prompt}
+Reject it gracefully if it's not related to Boriel BASIC. Give examples only in BorielBasic.
+This data might be useful for context:
+{data}
+"""
 
 
 def load_json(fname: str) -> JSON:

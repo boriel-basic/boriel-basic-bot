@@ -1,7 +1,7 @@
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 from typing import Self
 
-from common import SYS_PROMPT, START, INST, SYS, ESYS, EINST, END, JSON
+from common import EINST, END, ESYS, INST, JSON, START, SYS, SYS_PROMPT
 
 
 @dataclass(frozen=True)

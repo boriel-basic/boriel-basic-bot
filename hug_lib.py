@@ -5,9 +5,14 @@ import requests
 
 from common import JSON
 
-
 DEFAULT_EMBEDDING_MODEL: Final[str] = "sentence-transformers/all-MiniLM-L6-v2"
 DEFAULT_QUERY_MODEL: Final[str] = "mistralai/Mistral-7B-Instruct-v0.3"
+
+INSTRUCT_MODELS: Final[tuple] = (
+    "HuggingFaceH4/zephyr-7b-beta",
+    "mistralai/Mistral-Nemo-Instruct-2407",
+    "mistralai/Mistral-7B-Instruct-v0.3",
+)
 
 
 def resolve_token(token: str = "") -> str:
