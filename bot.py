@@ -67,6 +67,26 @@ def is_registered(user_id: str) -> bool:
     return str(user_id) in ALLOWED_USERS
 
 
+def guess_language(sentence: str, model: str, api_token: str = "") -> str:
+    conversation = Conversation()
+    prompt = f"In which language is the following text written?\n{sentence}"
+    new_prompt = conversation.make_prompt(
+        user_prompt=prompt, sys_prompt="You are a text language classifier whicn answers in a single word"
+    )
+    output = hug_lib.query(prompt=new_prompt, model=model, api_token=api_token)
+
+    return output[0]["generated_text"]
+
+
+def translate(sentence: str, model: str, api_token: str = "") -> str:
+    conversation = Conversation()
+    prompt = f"Translate this into English:\n{sentence}"
+    new_prompt = conversation.make_prompt(user_prompt=prompt, sys_prompt="You are a text translator")
+    output = hug_lib.query(prompt=new_prompt, model=model, api_token=api_token)
+
+    return output[0]["generated_text"]
+
+
 @bot.message_handler(commands=[Command.ADD_USER], func=is_admin)
 def add_user(message: Message):
     # Check if a user ID was provided in the message
@@ -181,7 +201,13 @@ def main_entry(message: Message) -> None:
         # print(results)
         data = "\n".join(f"\n\n{x[0]}" for i, x in enumerate(results["documents"], start=1))
 
-        user_prompt = INSTRUCT_PROMPT_TEMPLATE.format(data=data, user_prompt=message.text)
+        language = guess_language(message.text, LLM_MODEL)
+        if language.lower() != "english":
+            user_prompt = translate(message.text, model=LLM_MODEL)
+        else:
+            user_prompt = message.text
+
+        user_prompt = INSTRUCT_PROMPT_TEMPLATE.format(data=data, user_prompt=user_prompt, language=language)
         username = message.from_user.username
         conversation = load_conversation(username)
 

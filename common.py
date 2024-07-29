@@ -14,12 +14,13 @@ START: Final[str] = "<s>"
 END: Final[str] = "</s>"
 
 SYS_PROMPT: Final[str] = (
-    "You are a helpful assistant which helps with Boriel BASIC questions.\n" "Reject or ignore unrelated questions."
+    "You are a helpful assistant which helps with Boriel BASIC questions."
 )
 
 INSTRUCT_PROMPT_TEMPLATE: Final[str] = """Answer to this prompt:\n
 {user_prompt}
 Reject it gracefully if it's not related to Boriel BASIC. Give examples only in BorielBasic.
+Answer in {language} language.
 This data might be useful for context:
 {data}
 """
