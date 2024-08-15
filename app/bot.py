@@ -15,11 +15,12 @@ from telebot.types import Message
 
 from .common import INSTRUCT_PROMPT_TEMPLATE, SYS_PROMPT, load_json, save_json
 from .conversation import Conversation
-from .lib import hug_lib
+from .lib.hugging_face import HuggingFaceApi
 
 # LLM_MODEL: Final[str] = "HuggingFaceH4/zephyr-7b-beta"
 LLM_MODEL: Final[str] = "mistralai/Mistral-7B-Instruct-v0.3"
 # LLM_MODEL: Final[str] = "mistralai/Mistral-Nemo-Instruct-2407"
+
 
 ALLOWED_USERS_FILE = "../.users.json"
 ADMIN_USERS_FILE = ".admin_users.json"
@@ -31,9 +32,10 @@ COLLECTION: chromadb.Collection
 
 ALLOWED_USERS: dict[str, dict[str, bool]]
 
-CONVERSATION_PATH: Final[str] = "../memory"
+CONVERSATION_PATH: Final[str] = "./memory"
 CONVERSATIONS = defaultdict(Conversation)
 MAX_INPUT_LENGTH = 8192
+HUGGINGFACE_API = HuggingFaceApi()
 
 
 class Command(StrEnum):
@@ -65,26 +67,6 @@ def escape_markdown(text: str) -> str:
 def is_registered(user_id: str) -> bool:
     global ALLOWED_USERS
     return str(user_id) in ALLOWED_USERS
-
-
-def guess_language(sentence: str, model: str, api_token: str = "") -> str:
-    conversation = Conversation()
-    prompt = f"In which language is the following text written?\n{sentence}"
-    new_prompt = conversation.make_prompt(
-        user_prompt=prompt, sys_prompt="You are a text language classifier which answers in a single word"
-    )
-    output = hug_lib.query(prompt=new_prompt, model=model, api_token=api_token)
-
-    return output[0]["generated_text"]
-
-
-def translate(sentence: str, model: str, api_token: str = "") -> str:
-    conversation = Conversation()
-    prompt = f"Translate this into English:\n{sentence}"
-    new_prompt = conversation.make_prompt(user_prompt=prompt, sys_prompt="You are a text translator")
-    output = hug_lib.query(prompt=new_prompt, model=model, api_token=api_token)
-
-    return output[0]["generated_text"]
 
 
 @bot.message_handler(commands=[Command.ADD_USER], func=is_admin)
@@ -196,14 +178,14 @@ def save_conversation(username: str, conversation: Conversation) -> None:
 @bot.message_handler(func=is_user_allowed)
 def main_entry(message: Message) -> None:
     try:
-        embedding = hug_lib.get_embedding(message.text)
+        embedding = HUGGINGFACE_API.get_embedding(message.text)
         results = COLLECTION.query(query_embeddings=[embedding], n_results=3)
         # print(results)
         data = "\n".join(f"\n\n{x[0]}" for i, x in enumerate(results["documents"], start=1))
 
-        language = guess_language(message.text, LLM_MODEL)
+        language = HUGGINGFACE_API.guess_language(message.text, LLM_MODEL)
         if language.lower() != "english":
-            user_prompt = translate(message.text, model=LLM_MODEL)
+            user_prompt = HUGGINGFACE_API.translate(message.text, target_lang="English", model=LLM_MODEL)
         else:
             user_prompt = message.text
 
@@ -214,7 +196,7 @@ def main_entry(message: Message) -> None:
         prompt = conversation.truncate(max_length=MAX_INPUT_LENGTH, user_prompt=user_prompt, sys_prompt=SYS_PROMPT)
         print(prompt)
 
-        output = hug_lib.query(model=LLM_MODEL, prompt=prompt)
+        output = HUGGINGFACE_API.query(model=LLM_MODEL, prompt=prompt)
         print(output)
 
         system_answer = output[0]["generated_text"]
