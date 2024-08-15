@@ -13,15 +13,15 @@ import telebot
 from telebot.apihelper import ApiTelegramException
 from telebot.types import Message
 
-import hug_lib
-from common import INSTRUCT_PROMPT_TEMPLATE, SYS_PROMPT, load_json, save_json
-from conversation import Conversation
+from .common import INSTRUCT_PROMPT_TEMPLATE, SYS_PROMPT, load_json, save_json
+from .conversation import Conversation
+from .lib import hug_lib
 
 # LLM_MODEL: Final[str] = "HuggingFaceH4/zephyr-7b-beta"
-# LLM_MODEL: Final[str] = "mistralai/Mistral-7B-Instruct-v0.3"
-LLM_MODEL: Final[str] = "mistralai/Mistral-Nemo-Instruct-2407"
+LLM_MODEL: Final[str] = "mistralai/Mistral-7B-Instruct-v0.3"
+# LLM_MODEL: Final[str] = "mistralai/Mistral-Nemo-Instruct-2407"
 
-ALLOWED_USERS_FILE = ".users.json"
+ALLOWED_USERS_FILE = "../.users.json"
 ADMIN_USERS_FILE = ".admin_users.json"
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 bot = telebot.TeleBot(BOT_TOKEN)
@@ -31,7 +31,7 @@ COLLECTION: chromadb.Collection
 
 ALLOWED_USERS: dict[str, dict[str, bool]]
 
-CONVERSATION_PATH: Final[str] = "./memory"
+CONVERSATION_PATH: Final[str] = "../memory"
 CONVERSATIONS = defaultdict(Conversation)
 MAX_INPUT_LENGTH = 8192
 
@@ -71,7 +71,7 @@ def guess_language(sentence: str, model: str, api_token: str = "") -> str:
     conversation = Conversation()
     prompt = f"In which language is the following text written?\n{sentence}"
     new_prompt = conversation.make_prompt(
-        user_prompt=prompt, sys_prompt="You are a text language classifier whicn answers in a single word"
+        user_prompt=prompt, sys_prompt="You are a text language classifier which answers in a single word"
     )
     output = hug_lib.query(prompt=new_prompt, model=model, api_token=api_token)
 
@@ -212,10 +212,10 @@ def main_entry(message: Message) -> None:
         conversation = load_conversation(username)
 
         prompt = conversation.truncate(max_length=MAX_INPUT_LENGTH, user_prompt=user_prompt, sys_prompt=SYS_PROMPT)
-        # print(prompt)
+        print(prompt)
 
         output = hug_lib.query(model=LLM_MODEL, prompt=prompt)
-        # print(output)
+        print(output)
 
         system_answer = output[0]["generated_text"]
         conversation.add_entry(user_prompt=message.text, system_answer=system_answer)

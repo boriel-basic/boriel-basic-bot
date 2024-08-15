@@ -4,7 +4,7 @@ import glob
 
 import chromadb
 
-import hug_lib
+from app.lib import hug_lib
 
 ZXBASIC_DOC_PATH = "/home/boriel/src/boriel-basic/docs/doc"
 

@@ -3,7 +3,7 @@ from typing import Final
 
 import requests
 
-from common import JSON
+from app.common import JSON
 
 DEFAULT_EMBEDDING_MODEL: Final[str] = "sentence-transformers/all-MiniLM-L6-v2"
 DEFAULT_QUERY_MODEL: Final[str] = "mistralai/Mistral-7B-Instruct-v0.3"

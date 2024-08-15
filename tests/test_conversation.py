@@ -1,5 +1,5 @@
 # Tests the conversation library
-from conversation import Conversation, SYS_PROMPT
+from app.conversation import Conversation
 
 
 class TestConversation:

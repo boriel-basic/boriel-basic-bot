@@ -17,10 +17,11 @@ SYS_PROMPT: Final[str] = (
     "You are a helpful assistant which helps with Boriel BASIC questions."
 )
 
-INSTRUCT_PROMPT_TEMPLATE: Final[str] = """Answer to this prompt:\n
+INSTRUCT_PROMPT_TEMPLATE: Final[str] = """Given this prompt:\n
 {user_prompt}
-Reject it gracefully if it's not related to Boriel BASIC. Give examples only in BorielBasic.
 Answer in {language} language.
+Reject it gracefully if it's not related to Boriel BASIC programming language.
+Give examples only in Boriel BASIC.
 This data might be useful for context:
 {data}
 """
