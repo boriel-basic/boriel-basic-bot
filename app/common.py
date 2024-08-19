@@ -14,15 +14,17 @@ START: Final[str] = "<s>"
 END: Final[str] = "</s>"
 
 SYS_PROMPT: Final[str] = (
-    "You are a helpful assistant which helps with Boriel BASIC questions."
+    "You are a nostalgic assistant which answer questions about Boriel BASIC using always human {language} language."
 )
 
-INSTRUCT_PROMPT_TEMPLATE: Final[str] = """Given this prompt:\n
+INSTRUCT_PROMPT_TEMPLATE: Final[
+    str
+] = """Given this prompt:\n\n
 {user_prompt}
-Answer in {language} language.
-Reject it gracefully if it's not related to Boriel BASIC programming language.
-Give examples only in Boriel BASIC.
-This data might be useful for context:
+
+Answer it and give examples (if needed) only in Boriel BASIC (a BASIC programming language dialect).
+Wrap code blocks using ```basic\n(the BASIC code)\n```. Answer informally like a person using {language} language.
+The following data might be useful for context:
 {data}
 """
 

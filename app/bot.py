@@ -2,6 +2,7 @@
 
 import json
 import os
+import re
 import sys
 from collections import defaultdict
 from enum import StrEnum
@@ -56,10 +57,27 @@ def is_admin(message: Message) -> bool:
     return is_user_allowed(message) and ALLOWED_USERS[message.from_user.username].get("is_admin")
 
 
-def escape_markdown(text: str) -> str:
-    text = markdown.markdown(text=text, output_format="html")
-    text = text.replace("<p>", "")
-    text = text.replace("</p>", "\n")
+def escape_markdown(text: str, format_="markdown") -> str:
+    if format_ == "html":
+        text = markdown.markdown(text=text, output_format="html")
+        text = text.replace("<p>", "")
+        text = text.replace("</p>", "\n")
+    else:
+        code_blocks = re.findall(r"```.*?```", text, re.DOTALL)
+        table = {i: patt for i, patt in enumerate(code_blocks)}
+        for num, patt in table.items():
+            text = text.replace(patt, rf"<code block: {num} \>")
+
+        literals = re.findall("`.*?`|_.*?_", text)
+        table |= {i: patt for i, patt in enumerate(literals, len(code_blocks))}
+        for num, patt in enumerate(literals, len(code_blocks)):
+            text = text.replace(patt, rf"<code block: {num} \>")
+
+        text = telebot.formatting.escape_markdown(text)
+        for num, patt in table.items():
+            if patt.startswith("```\n"):
+                patt = patt.replace("```", "```basic", 1)
+            text = text.replace(rf"<code block: {num} \>", patt.replace("```\n", "````basic\n"))
 
     return text
 
@@ -178,35 +196,41 @@ def save_conversation(username: str, conversation: Conversation) -> None:
 @bot.message_handler(func=is_user_allowed)
 def main_entry(message: Message) -> None:
     try:
-        embedding = HUGGINGFACE_API.get_embedding(message.text)
+        language = HUGGINGFACE_API.guess_language(message.text, LLM_MODEL)
+        user_prompt = message.text
+
+        # if language != "english":
+        #     user_prompt = HUGGINGFACE_API.translate(message.text, target_lang="English", model=LLM_MODEL)
+
+        # classification = HUGGINGFACE_API.zero_shot_classify(user_prompt, ("salutation", "clarification", "acknowledgement", "question", "task"))
+        # print(classification)
+
+        embedding = HUGGINGFACE_API.get_embedding(user_prompt)
         results = COLLECTION.query(query_embeddings=[embedding], n_results=3)
-        # print(results)
         data = "\n".join(f"\n\n{x[0]}" for i, x in enumerate(results["documents"], start=1))
 
-        language = HUGGINGFACE_API.guess_language(message.text, LLM_MODEL)
-        if language.lower() != "english":
-            user_prompt = HUGGINGFACE_API.translate(message.text, target_lang="English", model=LLM_MODEL)
-        else:
-            user_prompt = message.text
-
-        user_prompt = INSTRUCT_PROMPT_TEMPLATE.format(data=data, user_prompt=user_prompt, language=language)
+        rag_prompt = INSTRUCT_PROMPT_TEMPLATE.format(data=data, user_prompt=user_prompt, language=language)
         username = message.from_user.username
         conversation = load_conversation(username)
 
-        prompt = conversation.truncate(max_length=MAX_INPUT_LENGTH, user_prompt=user_prompt, sys_prompt=SYS_PROMPT)
+        prompt = conversation.truncate(max_length=MAX_INPUT_LENGTH, user_prompt=rag_prompt, sys_prompt=SYS_PROMPT.format(language=language))
         print(prompt)
 
         output = HUGGINGFACE_API.query(model=LLM_MODEL, prompt=prompt)
         print(output)
 
         system_answer = output[0]["generated_text"]
-        conversation.add_entry(user_prompt=message.text, system_answer=system_answer)
+        conversation.add_entry(user_prompt=user_prompt, system_answer=system_answer)
         save_conversation(username, conversation)
+        # if language != "english":
+        #     system_answer = HUGGINGFACE_API.translate(system_answer, target_lang=language.capitalize(), model=LLM_MODEL)
 
         try:
-            bot.send_message(message.chat.id, system_answer, parse_mode="MarkdownV2")
-        except ApiTelegramException:
-            html = escape_markdown(system_answer)
+            escaped_msg = escape_markdown(system_answer, format_="markdown")
+            bot.send_message(message.chat.id, escaped_msg, parse_mode="MarkdownV2")
+        except ApiTelegramException as e:
+            print(f"{e}")
+            html = escape_markdown(system_answer, format_="html")
             try:
                 bot.send_message(message.chat.id, html, parse_mode="HTML")
             except ApiTelegramException:
